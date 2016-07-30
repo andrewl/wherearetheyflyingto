@@ -6,7 +6,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -71,9 +70,9 @@ func main() {
 			var destination_lat_long string
 			var count string
 			_ = rows.Scan(&destination_lat_long, &count)
-			heatmap_json = heatmap_json + "[" + destination_lat_long + "," + count + "]\n"
+			heatmap_json = heatmap_json + "[" + destination_lat_long + "," + count + "],\n"
 		}
-		heatmap_json = heatmap_json + "]"
+		heatmap_json = heatmap_json + "];"
 
 		file, err := os.Create("js/destinations.js")
 		if err != nil {
@@ -82,8 +81,13 @@ func main() {
 		}
 		defer file.Close()
 
-		w := bufio.NewWriter(file)
-		fmt.Fprint(w, heatmap_json)
+		_, err = file.WriteString(heatmap_json)
+
+		if err != nil {
+			logger.Log("msg", "Failed to write to destinations.js", "err", err)
+			return
+		}
+
 		return
 	}
 
