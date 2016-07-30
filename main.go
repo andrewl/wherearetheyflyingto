@@ -5,15 +5,18 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"errors"
-	"github.com/allegro/bigcache"
-	"github.com/go-kit/kit/log"
-	_ "github.com/mattn/go-sqlite3"
+	"flag"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/allegro/bigcache"
+	"github.com/go-kit/kit/log"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // Logger for logging
@@ -30,8 +33,6 @@ func main() {
 	logger = log.NewLogfmtLogger(os.Stderr)
 	logger = log.NewContext(logger).With("ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
 	logger.Log("msg", "Starting wherearetheyflyingto")
-
-	flightcache, _ = bigcache.NewBigCache(bigcache.DefaultConfig(10 * time.Minute))
 
 	var err error
 	db, err = sql.Open("sqlite3", "wherearetheyflyingto.db")
@@ -54,6 +55,39 @@ func main() {
 	if err != nil {
 		logger.Log("msg", "create table failed. This probably isn't a problem if the table already exists.", "err", err)
 	}
+
+	var write_heatmap = flag.Bool("heatmap", false, "just write out the heatmap and exit")
+	flag.Parse()
+
+	if *write_heatmap {
+		rows, err := db.Query("select destination_lat_long, count(*) from watft group by destination_lat_long")
+		if err != nil {
+			logger.Log("msg", "Failed to query database to create heatmap", "err", err)
+			return
+		}
+
+		heatmap_json := "var destination_points = [\n"
+		for rows.Next() {
+			var destination_lat_long string
+			var count string
+			_ = rows.Scan(&destination_lat_long, &count)
+			heatmap_json = heatmap_json + "[" + destination_lat_long + "," + count + "]\n"
+		}
+		heatmap_json = heatmap_json + "]"
+
+		file, err := os.Create("js/destinations.js")
+		if err != nil {
+			logger.Log("msg", "Failed to write destinations.js", "err", err)
+			return
+		}
+		defer file.Close()
+
+		w := bufio.NewWriter(file)
+		fmt.Fprint(w, heatmap_json)
+		return
+	}
+
+	flightcache, _ = bigcache.NewBigCache(bigcache.DefaultConfig(10 * time.Minute))
 
 	server_ip := os.Getenv("WATFT_SERVER")
 	// connect to this socket
