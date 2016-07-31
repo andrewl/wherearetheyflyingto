@@ -98,6 +98,7 @@ func main() {
 	conn, err := net.Dial("tcp", server_ip)
 	if err != nil {
 		logger.Log("msg", "Failed to connect to server", "err", err)
+		return
 	}
 	for {
 		// listen for messages
@@ -196,11 +197,11 @@ func get_flight_destination_from_callsign(callsign string) (lat_long string, err
 	flight_url := "http://flightaware.com/live/flight/" + callsign
 
 	resp, err := http.Get(flight_url)
-	defer resp.Body.Close()
 	if err != nil {
 		logger.Log("msg", "Failed to retrieve flight details from flightaware", "flight_url", flight_url, "err", err)
 		return "", errors.New("Failed to retrieve flight details")
 	}
+	defer resp.Body.Close()
 
 	flightaware_html, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
