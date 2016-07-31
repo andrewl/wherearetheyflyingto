@@ -1,9 +1,15 @@
 #!/bin/bash
-echo "Building"
+IFS='-' read -ra PLATFORM <<< "$PLATFORM"
+GOOS=${PLATFORM[0]}
+GOARCH=${PLATFORM[1]}
+COMPILER_ENV=""
+OUTPUT_FILENAME=wherearetheyflyingto-{$GOOS}-{$GOARCH}
+
+echo "Building {$GOOS} ${GOARCH} to ${OUTPUT_FILENAME}"
 
 if [ "${ARCH}" = "arm" ]; then
   sudo apt-get install gcc-arm-linux-gnueabi 
-  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm go build -o wherearetheyflyingto-arm
-else
-  go build
+  COMPILER_ENV="CC=arm-linux-gnueabi-gcc CGO_ENABLED=1"
 fi
+
+${COMPILER_ENV} GOOS=${GOOS} GOARCH=${GOARCH} go build -o ${OUTPUT_FILENAME}

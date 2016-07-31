@@ -4,8 +4,9 @@ go:
   - 1.5
 
 env:
-  - ARCH=x86
-  - ARCH=arm
+  - ARCH=linux-386
+  - ARCH=darwin-386
+  - ARCH=linux-arm
 
 sudo: required
 
