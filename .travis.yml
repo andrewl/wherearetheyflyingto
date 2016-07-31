@@ -4,9 +4,9 @@ go:
   - 1.5
 
 env:
-  - ARCH=linux-386
-  - ARCH=darwin-386
-  - ARCH=linux-arm
+  - PLATFORM=linux-386
+  - PLATFORM=darwin-386
+  - PLATFORM=linux-arm
 
 sudo: required
 
