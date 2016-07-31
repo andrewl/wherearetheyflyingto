@@ -9,7 +9,7 @@ echo "Building ${GOOS} ${GOARCH} to ${OUTPUT_FILENAME}"
 
 if [ "${GOARCH}" = "arm" ]; then
   sudo apt-get install gcc-arm-linux-gnueabi 
-  COMPILER_ENV="CC=arm-linux-gnueabi-gcc"
+  COMPILER_ENV="${COMPILER_ENV} CC=arm-linux-gnueabi-gcc"
 fi
 
 env ${COMPILER_ENV} GOOS=${GOOS} GOARCH=${GOARCH} go build -o ${OUTPUT_FILENAME}
