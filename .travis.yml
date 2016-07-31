@@ -14,7 +14,7 @@ script:
 
 deploy:
   provider: releases
-  api_key: "7eb307fa314e427b42711d94c732782aae7c4758"
+  api_key: "4300cc848285ba164f9528c27989bbc7b22004fc"
   file:
     - "wherearetheyflyingto"
     - "wherearetheyflyingto-arm"
