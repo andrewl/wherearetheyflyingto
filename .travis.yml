@@ -5,7 +5,8 @@ go:
 
 env:
   - PLATFORM=linux-386
-  - PLATFORM=darwin-386
+  - PLATFORM=linux-amd64
+  - PLATFORM=darwin-amd64
   - PLATFORM=linux-arm
 
 sudo: required
