@@ -4,9 +4,20 @@ go:
   - 1.5
 
 env:
+  - ARCH=x86
   - ARCH=arm
 
 sudo: required
 
 script:
   - "bash -ex .travis-ci.sh"
+
+deploy:
+  provider: releases
+  api_key: "7eb307fa314e427b42711d94c732782aae7c4758"
+  file:
+    - "wherearetheyflyingto"
+    - "wherearetheyflyingto-arm"
+  skip_cleanup: true
+  on:
+    tags: true
