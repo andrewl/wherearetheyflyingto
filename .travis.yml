@@ -14,7 +14,8 @@ script:
 
 deploy:
   provider: releases
-  api_key: "4300cc848285ba164f9528c27989bbc7b22004fc"
+  api_key: 
+    secure: "3DE6c9SXIrV91t0FqLPYVr4QiJU+1RcwVPyUuhyuj5+hwdU76JDZ845J/mYK0yYK4jffxIHIwfnO4EpPjT1ZEGo5S+39fL0FsVTuCU3Gr3oigH0Xx7HgRT03UWd3ABu7BaOcmWs++DJqd5+iIfVarWqtAbQG0wZRVyUnIDsGSLJQu9OmXAf/WHsuR/tbZLwf6+5wfVcYntRnbbM5Rxe5P5hwwi4NTW8QroH7jWdpWuo6z/vIvfnX1Vdo6SVrkVDc0XC+ULwN+C2GNYpXR73xGgwE1JbSdEYGy1z9g1Cze7EJmLBeUvfCdSZifc6Q1UA8erq9PPNCsKLHcUuEcg09XAQU4q6Q0JtNBg63Ssb3YOLj8Ed3b87Zf+fiTJnBrlVGxIh1CN74gIWjoHsN0Fr35q2/FPgoEiLZNDuohdpIcKfOjaAcZZJCNzCnAmTkITCYJ0lQAiPVr2bZ8A6EHX3KCll4T95/5Z3dADj1lo0GK9nqHhph7eVbZOuhPu2NV58OmmUXowBk1DCIyDlKPDy15sqnIDM0Fjt2yaJyKUeM7NzFp/olUcvDNxHv0limZ5KV8Lfuq91796sYANULUx+RzQnxKrcl+lEGbS/hvYXXt1Gji95oT2Zl9c12MZzJoo0Do7GWsG0rb3iZxtFRpYAFSX15VG1fHkGaNcvYGv5PUpE="
   file:
     - "wherearetheyflyingto"
     - "wherearetheyflyingto-arm"
