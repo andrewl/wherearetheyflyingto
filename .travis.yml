@@ -6,5 +6,7 @@ go:
 env:
   - ARCH=arm
 
+sudo: required
+
 script:
   - "bash -ex .travis-ci.sh"
