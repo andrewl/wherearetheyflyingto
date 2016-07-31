@@ -41,10 +41,10 @@
     }).addTo(map);
 
     destination_points = destination_points.map(function(p) {
-      return [p[0], p[1]];
+      return [p[1], p[0]];
     });
 
-    var heat = L.heatLayer(destination_points).addTo(map);
+    var heat = L.heatLayer(destination_points, {minOpacity: 0.1}).addTo(map);
   </script>
 </body>
 
