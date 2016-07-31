@@ -23,6 +23,9 @@ go build
 
 @todo - running
 
+Set the value of the environment variable WATFT_SERVER to the address and port of the machine that is dumping out the SBS data, eg
+`export WATFT_SERVER=127.0.0.1:33005`
+
 About the code
 ==============
 
