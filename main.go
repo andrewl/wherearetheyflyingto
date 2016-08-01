@@ -131,11 +131,7 @@ func main() {
 			logger.Log("msg", "Failed to read message from server", "err", err)
 		}
 		if err == nil {
-			//@todo this was originally run as a goroutine, but because the messages are
-			//not independent of each other (different attributes about the flight reside
-			//in multiple messages) the risk of processing the same information in parallel
-			//was high.
-			process_basestation_message(message)
+			go process_basestation_message(message)
 		}
 	}
 }
@@ -181,7 +177,7 @@ func process_basestation_message(message string) {
 
 	//Any callsign or location information in this message. NB not all data is passed
 	//with each message, but flightid is guaranteedd
-	msg_callsign := message_record[10]
+	msg_callsign := strings.TrimSpace(message_record[10])
 	msg_lat := message_record[14]
 	msg_lon := message_record[15]
 
@@ -243,7 +239,7 @@ func get_flight_destination_from_callsign(callsign string) (lat_long string, err
 	}
 
 	if strings.Index(string(flightaware_html), "destinationPoint") == -1 {
-		logger.Log("msg", "Failed to find destination in flight aware", "flight_url", flight_url)
+		logger.Log("msg", "Failed to find destinationPoint in flight aware", "flight_url", flight_url)
 		return "", errors.New("Failed to destination")
 	}
 
