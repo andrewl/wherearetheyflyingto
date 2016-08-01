@@ -124,9 +124,10 @@ func main() {
 		logger.Log("msg", "Failed to connect to server", "err", err)
 		return
 	}
+	reader := bufio.NewReader(conn)
 	for {
 		// listen for messages
-		message, _ := bufio.NewReader(conn).ReadString('\n')
+		message, _ := reader.ReadString('\n')
 		if err != nil {
 			logger.Log("msg", "Failed to read message from server", "err", err)
 		}
@@ -239,7 +240,7 @@ func get_flight_destination_from_callsign(callsign string) (lat_long string, err
 	}
 
 	if strings.Index(string(flightaware_html), "destinationPoint") == -1 {
-		logger.Log("msg", "Failed to find destinationPoint in flight aware", "flight_url", flight_url)
+		logger.Log("msg", "Failed to find destinationPoint in flight aware html", "flight_url", flight_url)
 		return "", errors.New("Failed to destination")
 	}
 
