@@ -66,7 +66,7 @@
       dataType: 'json',
       timeout: 300,
       success: function(data) {
-        destinationData = {max:0, data:[]);
+        destinationData = {max:0, data:[]};
         $(data).each( function(idx, item) {
           destinationData.data.push({lat: item[1], lng: item[0], count: item[2]});
           if (destinationData.max < item[2]) {
