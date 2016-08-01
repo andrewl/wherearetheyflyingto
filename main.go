@@ -6,10 +6,12 @@ import (
 	"encoding/csv"
 	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,12 +29,21 @@ var flightcache *bigcache.BigCache
 // sqlite3 db connection
 var db *sql.DB
 
+// lat long bounds of flights that we're interested in recording. A well setup aerial can pick up
+// ads-b messages from hundreds of KMs away, but we want the ones just flying overhead.
+var min_lat float64
+var min_lon float64
+var max_lat float64
+var max_lon float64
+
 func main() {
 
+	// Initialise logging
 	logger = log.NewLogfmtLogger(os.Stderr)
 	logger = log.NewContext(logger).With("ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
 	logger.Log("msg", "Starting wherearetheyflyingto")
 
+	// Open database and create table if necessary
 	var err error
 	db, err = sql.Open("sqlite3", "wherearetheyflyingto.db")
 	if err != nil {
@@ -96,6 +107,14 @@ func main() {
 		return
 	}
 
+	min_lat, _ = strconv.ParseFloat(os.Getenv("WATFT_MIN_LAT"), 64)
+	min_lon, _ = strconv.ParseFloat(os.Getenv("WATFT_MIN_LON"), 64)
+	max_lat, _ = strconv.ParseFloat(os.Getenv("WATFT_MAX_LAT"), 64)
+	max_lon, _ = strconv.ParseFloat(os.Getenv("WATFT_MAX_LON"), 64)
+
+	logger.Log("msg", "boundaries set", "boundaries", fmt.Sprintf("%v,%v -> %v,%v", min_lat, min_lon, max_lat, max_lon))
+
+	// Initialise our in-memory cache
 	flightcache, _ = bigcache.NewBigCache(bigcache.DefaultConfig(10 * time.Minute))
 
 	server_ip := os.Getenv("WATFT_SERVER")
@@ -139,14 +158,14 @@ func process_basestation_message(message string) {
 	message_record, err := reader.Read()
 
 	if err != nil {
-		logger.Log("msg", "Failed to decode message", "message", message)
+		logger.Log("msg", "Failed to decode message", "message", message, "err", err)
 		return
 	}
 
 	//Cursory validation that this is an SBS record
 	//@todo - check the number of fields
 	if message_record[0] != "MSG" {
-		logger.Log("msg", "There following message does not appear to be an SBS message", "message", message)
+		logger.Log("msg", "The following message does not appear to be an SBS message", "message", message)
 		return
 	}
 
@@ -175,8 +194,13 @@ func process_basestation_message(message string) {
 	}
 
 	if msg_lat != "" && msg_lon != "" {
-		//@todo ignore if outside our bounds
-		flightcache.Set(flightid+"_pos", []byte(msg_lon+","+msg_lat))
+		lat, _ := strconv.ParseFloat(msg_lat, 64)
+		lon, _ := strconv.ParseFloat(msg_lon, 64)
+		if lat < min_lat || lat > max_lat || lon < min_lon || lon > max_lon {
+		} else {
+			logger.Log("msg", "Received message sent from overhead", "latlong", msg_lat+","+msg_lon)
+			flightcache.Set(flightid+"_pos", []byte(msg_lon+","+msg_lat))
+		}
 	}
 
 	flight_pos, _ := flightcache.Get(flightid + "_pos")
@@ -186,9 +210,9 @@ func process_basestation_message(message string) {
 	if flight_pos != nil && flight_dest_lat_long != nil && flight_callsign != nil {
 		_, err := db.Exec("insert into watft(destination_lat_long,callsign,altitude) values(?,?,?)", flight_dest_lat_long, flight_callsign, 123)
 		if err != nil {
-			logger.Log("msg", "Failed to insert "+string(flight_callsign)+" into db", "err", err)
+			logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
 		} else {
-			logger.Log("msg", "Written "+string(flight_callsign)+" to db")
+			logger.Log("msg", string(flight_callsign)+" just flew overhead - writing to db")
 			flightcache.Set(flightid+"_seen", []byte("seen"))
 		}
 	}
