@@ -65,12 +65,17 @@ func main() {
 			return
 		}
 
-		heatmap_json := "[\n"
+		heatmap_json := "["
+		first := true
 		for rows.Next() {
 			var destination_lat_long string
 			var count string
 			_ = rows.Scan(&destination_lat_long, &count)
-			heatmap_json = heatmap_json + "[" + destination_lat_long + "," + count + "],\n"
+			if first == false {
+				heatmap_json = heatmap_json + ",\n"
+			}
+			heatmap_json = heatmap_json + "[" + destination_lat_long + "," + count + "]"
+			first = false
 		}
 		heatmap_json = heatmap_json + "]"
 
