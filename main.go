@@ -65,18 +65,18 @@ func main() {
 			return
 		}
 
-		heatmap_json := "var destination_points = [\n"
+		heatmap_json := "[\n"
 		for rows.Next() {
 			var destination_lat_long string
 			var count string
 			_ = rows.Scan(&destination_lat_long, &count)
 			heatmap_json = heatmap_json + "[" + destination_lat_long + "," + count + "],\n"
 		}
-		heatmap_json = heatmap_json + "];"
+		heatmap_json = heatmap_json + "]"
 
-		file, err := os.Create("js/destinations.js")
+		file, err := os.Create("./watft_destinations.json")
 		if err != nil {
-			logger.Log("msg", "Failed to write destinations.js", "err", err)
+			logger.Log("msg", "Failed to write watft_destinations.js", "err", err)
 			return
 		}
 		defer file.Close()
@@ -107,7 +107,11 @@ func main() {
 			logger.Log("msg", "Failed to read message from server", "err", err)
 		}
 		if err == nil {
-			go process_basestation_message(message)
+			//@todo this was originally run as a goroutine, but because the messages are
+			//not independent of each other (different attributes about the flight reside
+			//in multiple messages) the risk of processing the same information in parallel
+			//was high.
+			process_basestation_message(message)
 		}
 	}
 }
