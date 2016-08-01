@@ -1,5 +1,7 @@
 [![Build Status](https://travis-ci.org/andrewl/wherearetheyflyingto.svg?branch=master)](https://travis-ci.org/andrewl/wherearetheyflyingto) 
 
+[Latest Map](https://andrewl.github.io/wherearetheyflyingto/)
+
 What does this do?
 ==================
 
