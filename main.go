@@ -215,7 +215,7 @@ func process_basestation_message(message string) {
 		if err != nil {
 			logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
 		} else {
-			logger.Log("msg", string(flight_callsign)+" just flew overhead at an altitude of "+flight_alt+"- writing to db")
+			logger.Log("msg", string(flight_callsign)+" just flew overhead writing to db")
 			flightcache.Set(flightid+"_seen", []byte("seen"))
 		}
 	}
