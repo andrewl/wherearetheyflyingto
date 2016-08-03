@@ -132,7 +132,7 @@ func main() {
 			logger.Log("msg", "Failed to read message from server", "err", err)
 		}
 		if err == nil {
-			go process_basestation_message(message)
+			process_basestation_message(message)
 		}
 	}
 }
@@ -181,6 +181,7 @@ func process_basestation_message(message string) {
 	msg_callsign := strings.TrimSpace(message_record[10])
 	msg_lat := message_record[14]
 	msg_lon := message_record[15]
+	msg_alt := message_record[11]
 
 	if msg_callsign != "" {
 		flightcache.Set(flightid+"_callsign", []byte(msg_callsign))
@@ -200,16 +201,21 @@ func process_basestation_message(message string) {
 		}
 	}
 
-	flight_pos, _ := flightcache.Get(flightid + "_pos")
+	if msg_alt != "" {
+		flightcache.Set(flightid+"_alt", []byte(msg_alt))
+	}
+
 	flight_callsign, _ := flightcache.Get(flightid + "_callsign")
+	flight_pos, _ := flightcache.Get(flightid + "_pos")
+	flight_alt, _ := flightcache.Get(flightid + "_alt")
 	flight_dest_lat_long, _ := flightcache.Get(flightid + "_dest_lat_long")
 
-	if flight_pos != nil && flight_dest_lat_long != nil && flight_callsign != nil {
-		_, err := db.Exec("insert into watft(destination_lat_long,callsign,altitude) values(?,?,?)", flight_dest_lat_long, flight_callsign, 123)
+	if flight_pos != nil && flight_dest_lat_long != nil && flight_callsign != nil && flight_alt != nil {
+		_, err := db.Exec("insert into watft(destination_lat_long,callsign,altitude) values(?,?,?)", flight_dest_lat_long, flight_callsign, flight_alt)
 		if err != nil {
 			logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
 		} else {
-			logger.Log("msg", string(flight_callsign)+" just flew overhead - writing to db")
+			logger.Log("msg", string(flight_callsign)+" just flew overhead at an altitude of "+flight_alt+"- writing to db")
 			flightcache.Set(flightid+"_seen", []byte("seen"))
 		}
 	}
