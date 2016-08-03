@@ -4,17 +4,32 @@
 <head>
   <title>Where are they flying to?</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
   <style>
+    html {
+      font-family: 'Montserrat', sans-serif;
+      color: white;
+      background-color: #0099CC;
+      text-align: center;
+    }
+    
+    a {
+      color: white;
+    }
+    
     #map-canvas {
       width: 100%;
       height: 600px;
+      border: 2px solid #003399;
     }
   </style>
 </head>
 
 <body>
+  <h1>Where are they flying to?</h1>
+  <p>This is a <a href="https://en.wikipedia.org/wiki/Heat_map" target="_other">heatmap</a> showing the destinations of flights that fly over my house, a few miles south of Heathrow Airport. To find out how the data is collected and this map produced, please visit <a href="https://github.com/andrewl/wherearetheyflyingto">https://github.com/andrewl/wherearetheyflyingto</a></p>
   <div class="heatmap" id="map-canvas"></div>
 </body>
 <script src="js/heatmap.min.js"></script>
@@ -22,9 +37,24 @@
 <script>
   Zepto(function($) {
 
+    (function(i, s, o, g, r, a, m) {
+      i['GoogleAnalyticsObject'] = r;
+      i[r] = i[r] || function() {
+        (i[r].q = i[r].q || []).push(arguments)
+      }, i[r].l = 1 * new Date();
+      a = s.createElement(o),
+        m = s.getElementsByTagName(o)[0];
+      a.async = 1;
+      a.src = g;
+      m.parentNode.insertBefore(a, m)
+    })(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
+
+    ga('create', 'UA-81858987-1', 'auto');
+    ga('send', 'pageview');
+
     var baseLayer = L.tileLayer(
       'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '...',
+        attribution: 'Map data: <a href="https://www.openstreetmap.org/copyright" target="_other">&copy; OpenStreetMap contributors</a>',
         maxZoom: 18
       }
     );
@@ -32,14 +62,14 @@
     var cfg = {
       // radius should be small ONLY if scaleRadius is true (or small radius is intended)
       // if scaleRadius is false it will be the constant radius used in pixels
-      "radius": 2,
+      "radius": 40,
       "maxOpacity": .8,
       // scales the radius based on map zoom
-      "scaleRadius": true,
+      "scaleRadius": false,
       // if set to false the heatmap uses the global maximum for colorization
       // if activated: uses the data maximum within the current map boundaries 
       //   (there will always be a red spot with useLocalExtremas true)
-      "useLocalExtrema": true,
+      "useLocalExtrema": false,
       // which field name in your data represents the latitude - default "lat"
       latField: 'lat',
       // which field name in your data represents the longitude - default "lng"
@@ -48,11 +78,10 @@
       valueField: 'count'
     };
 
-
     var heatmapLayer = new HeatmapOverlay(cfg);
 
     var map = new L.Map('map-canvas', {
-      center: new L.LatLng(30,31),
+      center: new L.LatLng(30, 31),
       zoom: 3,
       layers: [baseLayer, heatmapLayer]
     });
@@ -66,14 +95,20 @@
       dataType: 'json',
       timeout: 300,
       success: function(data) {
-        destinationData = {max:0, data:[]};
-        $(data).each( function(idx, item) {
-          destinationData.data.push({lat: item[1], lng: item[0], count: item[2]});
+        destinationData = {
+          max: 0,
+          data: []
+        };
+        $(data).each(function(idx, item) {
+          destinationData.data.push({
+            lat: item[1],
+            lng: item[0],
+            count: item[2]
+          });
           if (destinationData.max < item[2]) {
             destinationData.max = item[2];
           }
         });
-        console.log(destinationData);
         heatmapLayer.setData(destinationData);
       },
       error: function(xhr, type) {
