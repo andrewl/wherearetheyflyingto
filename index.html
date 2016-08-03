@@ -52,8 +52,8 @@
     var heatmapLayer = new HeatmapOverlay(cfg);
 
     var map = new L.Map('map-canvas', {
-      center: new L.LatLng(25.6586, -80.3568),
-      zoom: 4,
+      center: new L.LatLng(30,31),
+      zoom: 3,
       layers: [baseLayer, heatmapLayer]
     });
 
@@ -80,20 +80,6 @@
         alert('Failed to load heatmap data');
       }
     });
-
-    var testData = {
-      max: 3,
-      data: [{
-        lat: 24.6408,
-        lng: 46.7728,
-        count: 3
-      }, {
-        lat: 50.75,
-        lng: -1.55,
-        count: 1
-      }]
-    };
-
   });
 </script>
 
