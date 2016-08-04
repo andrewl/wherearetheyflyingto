@@ -74,7 +74,7 @@ func main() {
 		first := true
 		for max_alt := 9000; max_alt < 45000; max_alt += 9000 {
 			min_alt := max_alt - 9000
-			rows, err := db.Query("select destination_lat_long, count(*) from watft where altitude > " + strconv.Itoa(min_alt) + " and altitude <= " + strconv.Itoa(max_alt) + " group by destination_lat_long")
+			rows, err := db.Query("select destination_lat_long, count(*) from watft where abs(altitude) > " + strconv.Itoa(min_alt) + " and abs(altitude) <= " + strconv.Itoa(max_alt) + " group by destination_lat_long")
 			if err != nil {
 				logger.Log("msg", "Failed to query database to create heatmap", "err", err)
 				return
@@ -103,7 +103,7 @@ func main() {
 		_, err = file.WriteString(heatmap_json)
 
 		if err != nil {
-			logger.Log("msg", "Failed to write to destinations.js", "err", err)
+			logger.Log("msg", "Failed to write to watf_destinations.js", "err", err)
 			return
 		}
 
