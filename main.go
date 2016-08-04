@@ -70,23 +70,26 @@ func main() {
 	flag.Parse()
 
 	if *write_heatmap {
-		rows, err := db.Query("select destination_lat_long, count(*) from watft group by destination_lat_long")
-		if err != nil {
-			logger.Log("msg", "Failed to query database to create heatmap", "err", err)
-			return
-		}
-
 		heatmap_json := "["
 		first := true
-		for rows.Next() {
-			var destination_lat_long string
-			var count string
-			_ = rows.Scan(&destination_lat_long, &count)
-			if first == false {
-				heatmap_json = heatmap_json + ",\n"
+		for max_alt := 9000; max_alt < 45000; max_alt += 9000 {
+			min_alt := max_alt - 9000
+			rows, err := db.Query("select destination_lat_long, count(*) from watft where altitude > " + strconv.Itoa(min_alt) + " and altitude <= " + strconv.Itoa(max_alt) + " group by destination_lat_long")
+			if err != nil {
+				logger.Log("msg", "Failed to query database to create heatmap", "err", err)
+				return
 			}
-			heatmap_json = heatmap_json + "[" + destination_lat_long + "," + count + "]"
-			first = false
+
+			for rows.Next() {
+				var destination_lat_long string
+				var count string
+				_ = rows.Scan(&destination_lat_long, &count)
+				if first == false {
+					heatmap_json = heatmap_json + ",\n"
+				}
+				heatmap_json = heatmap_json + "[" + destination_lat_long + "," + count + "," + strconv.Itoa(max_alt) + "]"
+				first = false
+			}
 		}
 		heatmap_json = heatmap_json + "]"
 
