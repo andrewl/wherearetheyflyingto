@@ -81,7 +81,6 @@
 </div>
   <div id="map-and-slider" class="dp100">
     <div id="slider" class="dp20">
-      <h5>Altitude (feet)</h5>
       <div id="altitude_selector"></div>
     </div>
     <div class="heatmap dp80" id="map-canvas"></div>
@@ -183,14 +182,12 @@
 
     var destinationData = {};
     update_heatmap = function(min_alt, max_alt) {
-      console.log(min_alt)
-      console.log(max_alt)
       destinationData = {
         max: 0,
         data: []
       };
       $(waft_destinations).each(function(idx, item) {
-        if (item[3] > min_alt && item[3] < max_alt) {
+        if (item[3] > min_alt && item[3] <= max_alt) {
           destinationData.data.push({
             lat: item[1],
             lng: item[0],
