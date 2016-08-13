@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"database/sql"
-	"encoding/csv"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 	"time"
 
 	"github.com/allegro/bigcache"
+	sbsmessage "github.com/andrewl/wherearetheyflyingto/sbsmessage"
 	"github.com/go-kit/kit/log"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -140,37 +140,21 @@ func main() {
 	}
 }
 
-/**
-Basestation messages consist of csv fields described here
-@see http://woodair.net/SBS/Article/Barebones42_Socket_Data.htm
-Different message types contain different data, eg callsign information
-is not usually transmitted alongside positional information, however
-a common 'flight id' is transmitted for each flight so different attributes
-such as call sign, altitude, position etc can be tied together using the
-flightid field. We use this field as the prefix of a key in our in-memory
-cache and when we have all the information that we require in the cache then
-we can write it out to a single file.
-*/
 func process_basestation_message(message string) {
 
-	//Split the csv message into fields
-	reader := csv.NewReader(strings.NewReader(message))
-	message_record, err := reader.Read()
-
+	var sbs_message sbsmessage.sbsmessage
+	err := (&sbs_message).from_string(message)
 	if err != nil {
-		logger.Log("msg", "Failed to decode message", "message", message, "err", err)
-		return
-	}
-
-	//Cursory validation that this is an SBS record
-	//@todo - check the number of fields
-	if message_record[0] != "MSG" {
-		logger.Log("msg", "The following message does not appear to be an SBS message", "message", message)
+		logger.Log("msg", "Failed to decode message", "err", err)
 		return
 	}
 
 	//The flight id
-	flightid := message_record[4]
+	flightid, err := sbs_message.get_flight_id()
+
+	if err != nil {
+		logger.Log("msg", "Failed to find flight id")
+	}
 
 	flight_seen, _ := flightcache.Get(flightid + "_seen")
 	if flight_seen != nil {
@@ -179,41 +163,57 @@ func process_basestation_message(message string) {
 		return
 	}
 
-	//Any callsign or location information in this message. NB not all data is passed
-	//with each message, but flightid is guaranteedd
-	msg_callsign := strings.TrimSpace(message_record[10])
-	msg_lat := message_record[14]
-	msg_lon := message_record[15]
-	msg_alt := message_record[11]
+	msg_callsign, err := sbs_message.get_callsign()
+
+	if err != nil {
+		logger.Log("msg", "Failed to get callsign", "err", err)
+	}
 
 	if msg_callsign != "" {
 		flightcache.Set(flightid+"_callsign", []byte(msg_callsign))
+		//@todo refactor this into an interface
 		dest_lat_long, _ := get_flight_destination_from_callsign(msg_callsign)
 		if dest_lat_long != "" {
 			flightcache.Set(flightid+"_dest_lat_long", []byte(dest_lat_long))
 		}
 	}
 
-	if msg_lat != "" && msg_lon != "" {
-		lat, _ := strconv.ParseFloat(msg_lat, 64)
-		lon, _ := strconv.ParseFloat(msg_lon, 64)
-		if lat < min_lat || lat > max_lat || lon < min_lon || lon > max_lon {
-		} else {
-			logger.Log("msg", "Received message sent from overhead", "latlong", msg_lat+","+msg_lon)
-			flightcache.Set(flightid+"_pos", []byte(msg_lon+","+msg_lat))
+	flight_has_been_overhead, _ := flightcache.Get(flightid + "_has_been_overhead")
+
+	if flight_has_been_overhead != nil {
+
+		visible, err := sbs_message.is_visible_from(0.0, 0.0)
+
+		if err != nil {
+			logger.Log("msg", "Failed to get whether visible", "err", err)
+		}
+
+		if visible {
+
+			msg_alt, err := sbs_message.get_altitude()
+
+			if err != nil {
+				logger.Log("msg", "Failed to get whether visible", "err", err)
+			}
+			if msg_alt != 0 {
+				flightcache.Set(flightid+"_alt", []byte(strconv.Itoa(msg_alt)))
+			}
+			flightcache.Set(flightid+"_has_been_overhead", []byte("1"))
 		}
 	}
 
-	if msg_alt != "" {
-		flightcache.Set(flightid+"_alt", []byte(msg_alt))
+	// Determine whether we have received all the information for this flight, and if so
+	// write it to the db.
+	// Might need to mutex this in order to prevent multiple writes?
+	if flight_has_been_overhead != nil {
+		return
 	}
 
 	flight_callsign, _ := flightcache.Get(flightid + "_callsign")
-	flight_pos, _ := flightcache.Get(flightid + "_pos")
 	flight_alt, _ := flightcache.Get(flightid + "_alt")
 	flight_dest_lat_long, _ := flightcache.Get(flightid + "_dest_lat_long")
 
-	if flight_pos != nil && flight_dest_lat_long != nil && flight_callsign != nil && flight_alt != nil {
+	if flight_dest_lat_long != nil && flight_callsign != nil && flight_alt != nil {
 		_, err := db.Exec("insert into watft(destination_lat_long,callsign,altitude) values(?,?,?)", flight_dest_lat_long, flight_callsign, flight_alt)
 		if err != nil {
 			logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
@@ -257,4 +257,13 @@ func get_flight_destination_from_callsign(callsign string) (lat_long string, err
 	lat_long = strings.Split(tmp_strings[1], "]")[0]
 
 	return lat_long, nil
+}
+
+func (message sbsmessage) is_visible_from(pos_lat float64, pos_lon float64) (visibility bool, err error) {
+	lat, lon, err := message.get_lat_long()
+	if lat < 0 && lon > 0 {
+		return true, nil
+	} else {
+		return false, nil
+	}
 }
