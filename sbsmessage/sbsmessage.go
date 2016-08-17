@@ -17,12 +17,12 @@ import (
  * such as call sign, altitude, position etc can be tied together using the
  * flightid field.
  */
-type sbsmessage struct {
+type SBSMessage struct {
 	fields    []string
 	flight_id string
 }
 
-func (message *sbsmessage) from_string(message_string string) (err error) {
+func (message *SBSMessage) FromString(message_string string) (err error) {
 
 	//Split the csv message into fields
 	reader := csv.NewReader(strings.NewReader(message_string))
@@ -43,22 +43,22 @@ func (message *sbsmessage) from_string(message_string string) (err error) {
 	return nil
 }
 
-func (message sbsmessage) get_flight_id() (flightid string, err error) {
+func (message SBSMessage) GetFlightId() (flightid string, err error) {
 	return message.flight_id, nil
 }
 
-func (message sbsmessage) get_callsign() (callsign string, err error) {
+func (message SBSMessage) GetCallsign() (callsign string, err error) {
 	//@todo - check that fields[10] exists
 	return strings.TrimSpace(message.fields[10]), nil
 }
 
-func (message sbsmessage) get_lat_long() (lat float64, lon float64, err error) {
+func (message SBSMessage) GetLatLong() (lat float64, lon float64, err error) {
 	lat, _ = strconv.ParseFloat(message.fields[14], 64)
 	lon, _ = strconv.ParseFloat(message.fields[15], 64)
 	return lat, lon, nil
 }
 
-func (message sbsmessage) get_altitude() (altitude int, err error) {
+func (message SBSMessage) GetAltitude() (altitude int, err error) {
 	altitude, _ = strconv.Atoi(message.fields[11])
 	return altitude, nil
 }

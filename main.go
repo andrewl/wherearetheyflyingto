@@ -3,21 +3,17 @@ package main
 import (
 	"bufio"
 	"database/sql"
-	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/allegro/bigcache"
-	sbsmessage "github.com/andrewl/wherearetheyflyingto/sbsmessage"
+	"github.com/andrewl/wherearetheyflyingto/destinationsource"
+	"github.com/andrewl/wherearetheyflyingto/sbsmessage"
 	"github.com/go-kit/kit/log"
 	_ "github.com/mattn/go-sqlite3"
+	"net"
+	"os"
+	"strconv"
+	"time"
 )
 
 // Logger for logging
@@ -35,6 +31,9 @@ var min_lat float64
 var min_lon float64
 var max_lat float64
 var max_lon float64
+
+// Use flightaware as our destination source
+var destination_source destinationsource.FlightAwareDestinationSource
 
 func main() {
 
@@ -142,15 +141,15 @@ func main() {
 
 func process_basestation_message(message string) {
 
-	var sbs_message sbsmessage.sbsmessage
-	err := (&sbs_message).from_string(message)
+	var sbs_message sbsmessage.SBSMessage
+	err := (&sbs_message).FromString(message)
 	if err != nil {
 		logger.Log("msg", "Failed to decode message", "err", err)
 		return
 	}
 
 	//The flight id
-	flightid, err := sbs_message.get_flight_id()
+	flightid, err := sbs_message.GetFlightId()
 
 	if err != nil {
 		logger.Log("msg", "Failed to find flight id")
@@ -163,18 +162,33 @@ func process_basestation_message(message string) {
 		return
 	}
 
-	msg_callsign, err := sbs_message.get_callsign()
+	msg_callsign, err := sbs_message.GetCallsign()
 
 	if err != nil {
 		logger.Log("msg", "Failed to get callsign", "err", err)
 	}
 
-	if msg_callsign != "" {
-		flightcache.Set(flightid+"_callsign", []byte(msg_callsign))
-		//@todo refactor this into an interface
-		dest_lat_long, _ := get_flight_destination_from_callsign(msg_callsign)
-		if dest_lat_long != "" {
-			flightcache.Set(flightid+"_dest_lat_long", []byte(dest_lat_long))
+	flight_destination_lat_long, err := flightcache.Get(flightid + "_dest_lat_long")
+	if flight_destination_lat_long == nil {
+		if msg_callsign != "" {
+			flightcache.Set(flightid+"_callsign", []byte(msg_callsign))
+			//@todo refactor this into an interface
+			dest_lat_long, err := destination_source.GetDestinationFromCallsign(msg_callsign)
+			if err != nil {
+				logger.Log("msg", "There was an error retrieving the destination from the callsign", "err", err)
+				flightcache.Set(flightid+"_dest_lat_long", []byte("error"))
+			} else {
+				flightcache.Set(flightid+"_dest_lat_long", []byte(dest_lat_long))
+			}
+		}
+	} else {
+		//We errored trying to get the lat-long so don't bother again
+		//@todo - tighten up the error handling around this probably.
+		//perhaps we do want to try again, but throttle it, so perhaps
+		//write in the next time that we should try to retrieve the
+		//information?
+		if string(flight_destination_lat_long) == "error" {
+			return
 		}
 	}
 
@@ -182,7 +196,7 @@ func process_basestation_message(message string) {
 
 	if flight_has_been_overhead != nil {
 
-		visible, err := sbs_message.is_visible_from(0.0, 0.0)
+		visible, err := is_visible_from(sbs_message, 0.0, 0.0)
 
 		if err != nil {
 			logger.Log("msg", "Failed to get whether visible", "err", err)
@@ -190,7 +204,7 @@ func process_basestation_message(message string) {
 
 		if visible {
 
-			msg_alt, err := sbs_message.get_altitude()
+			msg_alt, err := sbs_message.GetAltitude()
 
 			if err != nil {
 				logger.Log("msg", "Failed to get whether visible", "err", err)
@@ -224,43 +238,9 @@ func process_basestation_message(message string) {
 	}
 }
 
-/**
- * Retrieves the lat long of the destination (as a simple string, we're not interested in doing
- * any real processing with this, just using it as an index. Uses the flightaware website as
- * a datasource, and parses some js embedded in the page. As such this is potentially
- * brittle, but the function defintion should stand, even if we were to plugin a different
- * data source.
- **/
-func get_flight_destination_from_callsign(callsign string) (lat_long string, err error) {
-
-	flight_url := "http://flightaware.com/live/flight/" + callsign
-
-	resp, err := http.Get(flight_url)
-	if err != nil {
-		logger.Log("msg", "Failed to retrieve flight details from flightaware", "flight_url", flight_url, "err", err)
-		return "", errors.New("Failed to retrieve flight details")
-	}
-	defer resp.Body.Close()
-
-	flightaware_html, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		logger.Log("msg", "Failed to read flight details from flightaware", "flight_url", flight_url, "err", err)
-		return "", errors.New("Failed to retrieve flight details")
-	}
-
-	if strings.Index(string(flightaware_html), "destinationPoint") == -1 {
-		logger.Log("msg", "Failed to find destinationPoint in flight aware html", "flight_url", flight_url)
-		return "", errors.New("Failed to destination")
-	}
-
-	tmp_strings := strings.Split(string(flightaware_html), "destinationPoint\":[")
-	lat_long = strings.Split(tmp_strings[1], "]")[0]
-
-	return lat_long, nil
-}
-
-func (message sbsmessage) is_visible_from(pos_lat float64, pos_lon float64) (visibility bool, err error) {
-	lat, lon, err := message.get_lat_long()
+//@todo function based on distance from point and altitude
+func is_visible_from(message sbsmessage.SBSMessage, pos_lat float64, pos_lon float64) (visibility bool, err error) {
+	lat, lon, err := message.GetLatLong()
 	if lat < 0 && lon > 0 {
 		return true, nil
 	} else {
