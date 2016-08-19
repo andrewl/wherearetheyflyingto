@@ -3,17 +3,19 @@ package main
 import (
 	"bufio"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
-	"github.com/allegro/bigcache"
-	"github.com/andrewl/wherearetheyflyingto/destinationsource"
-	"github.com/andrewl/wherearetheyflyingto/sbsmessage"
-	"github.com/go-kit/kit/log"
-	_ "github.com/mattn/go-sqlite3"
 	"net"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/allegro/bigcache"
+	"github.com/andrewl/wherearetheyflyingto/destinationfinder"
+	"github.com/andrewl/wherearetheyflyingto/sbsmessage"
+	"github.com/go-kit/kit/log"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // Logger for logging
@@ -27,13 +29,11 @@ var db *sql.DB
 
 // lat long bounds of flights that we're interested in recording. A well setup aerial can pick up
 // ads-b messages from hundreds of KMs away, but we want the ones just flying overhead.
-var min_lat float64
-var min_lon float64
-var max_lat float64
-var max_lon float64
+var pos_lat float64
+var pos_lon float64
 
 // Use flightaware as our destination source
-var destination_source destinationsource.FlightAwareDestinationSource
+var destination_finder destinationfinder.FlightAwareDestinationFinder
 
 func main() {
 
@@ -109,12 +109,10 @@ func main() {
 		return
 	}
 
-	min_lat, _ = strconv.ParseFloat(os.Getenv("WATFT_MIN_LAT"), 64)
-	min_lon, _ = strconv.ParseFloat(os.Getenv("WATFT_MIN_LON"), 64)
-	max_lat, _ = strconv.ParseFloat(os.Getenv("WATFT_MAX_LAT"), 64)
-	max_lon, _ = strconv.ParseFloat(os.Getenv("WATFT_MAX_LON"), 64)
+	pos_lat, _ = strconv.ParseFloat(os.Getenv("WATFT_LAT"), 64)
+	pos_lon, _ = strconv.ParseFloat(os.Getenv("WATFT_LON"), 64)
 
-	logger.Log("msg", "boundaries set", "boundaries", fmt.Sprintf("%v,%v -> %v,%v", min_lat, min_lon, max_lat, max_lon))
+	logger.Log("msg", "point set", "point", fmt.Sprintf("%v,%v", pos_lat, pos_lon))
 
 	// Initialise our in-memory cache
 	flightcache, _ = bigcache.NewBigCache(bigcache.DefaultConfig(10 * time.Minute))
@@ -173,7 +171,7 @@ func process_basestation_message(message string) {
 		if msg_callsign != "" {
 			flightcache.Set(flightid+"_callsign", []byte(msg_callsign))
 			//@todo refactor this into an interface
-			dest_lat_long, err := destination_source.GetDestinationFromCallsign(msg_callsign)
+			dest_lat_long, err := destination_finder.GetDestinationFromCallsign(msg_callsign)
 			if err != nil {
 				logger.Log("msg", "There was an error retrieving the destination from the callsign", "err", err)
 				flightcache.Set(flightid+"_dest_lat_long", []byte("error"))
@@ -238,12 +236,25 @@ func process_basestation_message(message string) {
 	}
 }
 
-//@todo function based on distance from point and altitude
 func is_visible_from(message sbsmessage.SBSMessage, pos_lat float64, pos_lon float64) (visibility bool, err error) {
-	lat, lon, err := message.GetLatLong()
-	if lat < 0 && lon > 0 {
-		return true, nil
-	} else {
-		return false, nil
+	msg_lat, msg_lon, err := message.GetLatLong()
+
+	if err != nil {
+		return nil, errors.New("Could not determine lat long from message")
 	}
+
+	alt, err := message.GetAltitude()
+
+	if err != nil {
+		return nil, errors.New("Could not determine altitude from message")
+	}
+
+	//@todo calculate this based on altitude. the further up the plane is the more visible it's from
+	var extents float64 = 0.05
+
+	if msg_lat > (pos_lat-extents) && msg_lat < (pos_lat+extents) && msg_lon > (pos_lon-extents) && msg_lon < (pos_lon+extents) {
+		return true, nil
+	}
+
+	return false, nil
 }
