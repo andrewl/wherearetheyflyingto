@@ -27,13 +27,16 @@ var flightcache *bigcache.BigCache
 // sqlite3 db connection
 var db *sql.DB
 
+var destinations_cache destinationfinder.DestinationFinderCache
+
 // lat long bounds of flights that we're interested in recording. A well setup aerial can pick up
 // ads-b messages from hundreds of KMs away, but we want the ones just flying overhead.
 var pos_lat float64
 var pos_lon float64
 
 // Use flightaware as our destination source
-var destination_finder destinationfinder.FlightAwareDestinationFinder
+//var destination_finder destinationfinder.FlightAwareDestinationFinder
+var destination_finder = destinationfinder.GetDestinationFinder()
 
 func main() {
 
@@ -109,6 +112,9 @@ func main() {
 		return
 	}
 
+	//open our cache
+	destinations_cache.open(db)
+
 	pos_lat, _ = strconv.ParseFloat(os.Getenv("WATFT_LAT"), 64)
 	pos_lon, _ = strconv.ParseFloat(os.Getenv("WATFT_LON"), 64)
 
@@ -166,17 +172,21 @@ func process_basestation_message(message string) {
 		logger.Log("msg", "Failed to get callsign", "err", err)
 	}
 
+	//@todo - we only need to do this for flights that have gone overhead??!!
 	flight_destination_lat_long, err := flightcache.Get(flightid + "_dest_lat_long")
 	if flight_destination_lat_long == nil {
 		if msg_callsign != "" {
 			flightcache.Set(flightid+"_callsign", []byte(msg_callsign))
-			//@todo refactor this into an interface
-			dest_lat_long, err := destination_finder.GetDestinationFromCallsign(msg_callsign)
-			if err != nil {
-				logger.Log("msg", "There was an error retrieving the destination from the callsign", "err", err)
-				flightcache.Set(flightid+"_dest_lat_long", []byte("error"))
-			} else {
-				flightcache.Set(flightid+"_dest_lat_long", []byte(dest_lat_long))
+			dest_lat_long = destinations_cache.cache_get(msg_callsign)
+			if dest_lat_long == "" {
+				dest_lat_long, err := destination_finder.GetDestinationFromCallsign(msg_callsign)
+				if err != nil {
+					logger.Log("msg", "There was an error retrieving the destination from the callsign", "err", err)
+					flightcache.Set(flightid+"_dest_lat_long", []byte("error"))
+				} else {
+					flightcache.Set(flightid+"_dest_lat_long", []byte(dest_lat_long))
+					destinations_cache.cache_set(callsign, dest_lat_long)
+				}
 			}
 		}
 	} else {
@@ -240,16 +250,18 @@ func is_visible_from(message sbsmessage.SBSMessage, pos_lat float64, pos_lon flo
 	msg_lat, msg_lon, err := message.GetLatLong()
 
 	if err != nil {
-		return nil, errors.New("Could not determine lat long from message")
+		return false, errors.New("Could not determine lat long from message")
 	}
 
+	/**
 	alt, err := message.GetAltitude()
 
 	if err != nil {
-		return nil, errors.New("Could not determine altitude from message")
+		return false, errors.New("Could not determine altitude from message")
 	}
-
 	//@todo calculate this based on altitude. the further up the plane is the more visible it's from
+	*/
+
 	var extents float64 = 0.05
 
 	if msg_lat > (pos_lat-extents) && msg_lat < (pos_lat+extents) && msg_lon > (pos_lon-extents) && msg_lon < (pos_lon+extents) {
