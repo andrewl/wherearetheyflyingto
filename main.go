@@ -113,7 +113,7 @@ func main() {
 	}
 
 	//open our cache
-	destinations_cache.open(db)
+	destinations_cache.Open(db)
 
 	pos_lat, _ = strconv.ParseFloat(os.Getenv("WATFT_LAT"), 64)
 	pos_lon, _ = strconv.ParseFloat(os.Getenv("WATFT_LON"), 64)
@@ -177,15 +177,15 @@ func process_basestation_message(message string) {
 	if flight_destination_lat_long == nil {
 		if msg_callsign != "" {
 			flightcache.Set(flightid+"_callsign", []byte(msg_callsign))
-			dest_lat_long = destinations_cache.cache_get(msg_callsign)
+			dest_lat_long := destinations_cache.Cache_get(msg_callsign)
 			if dest_lat_long == "" {
-				dest_lat_long, err := destination_finder.GetDestinationFromCallsign(msg_callsign)
+				dest_lat_long, err = destination_finder.GetDestinationFromCallsign(msg_callsign)
 				if err != nil {
 					logger.Log("msg", "There was an error retrieving the destination from the callsign", "err", err)
 					flightcache.Set(flightid+"_dest_lat_long", []byte("error"))
 				} else {
 					flightcache.Set(flightid+"_dest_lat_long", []byte(dest_lat_long))
-					destinations_cache.cache_set(callsign, dest_lat_long)
+					destinations_cache.Cache_set(msg_callsign, dest_lat_long)
 				}
 			}
 		}

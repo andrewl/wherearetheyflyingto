@@ -17,7 +17,7 @@ type DestinationFinderCache struct {
 	db *sql.DB
 }
 
-func (dfc DestinationFinderCache) open(db *sql.DB) error {
+func (dfc DestinationFinderCache) Open(db *sql.DB) error {
 	dfc.db = db
 
 	create_table_sql := `
@@ -34,7 +34,7 @@ func (dfc DestinationFinderCache) open(db *sql.DB) error {
 	return nil
 }
 
-func (dfc DestinationFinderCache) cache_get(callsign string) string {
+func (dfc DestinationFinderCache) Cache_get(callsign string) string {
 	var latlong string
 	rows, err := dfc.db.Query("select destination_lat_long from dest_cache where callsign = '" + callsign + "'")
 	if err != nil {
@@ -43,6 +43,6 @@ func (dfc DestinationFinderCache) cache_get(callsign string) string {
 	return latlong
 }
 
-func (dfc DestinationFinderCache) cache_set(callsign string, latlong string) {
+func (dfc DestinationFinderCache) Cache_set(callsign string, latlong string) {
 	dfc.db.Exec("insert into dest_cache(callsign,destination_lat_long) values(?,?)", callsign, latlong)
 }
