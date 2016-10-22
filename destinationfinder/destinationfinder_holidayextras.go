@@ -21,6 +21,9 @@ type HolidayExtrasDestinationFinder struct {
  * data source.
  **/
 func (destination_finder HolidayExtrasDestinationFinder) GetDestinationFromCallsign(callsign string) (lat_long string, err error) {
+	if callsign == "" {
+		return "", errors.New("Not going to get latlong from an empty callsign")
+	}
 	flight_url := "http://www.holidayextras.co.uk/flight/" + callsign
 
 	resp, err := http.Get(flight_url)

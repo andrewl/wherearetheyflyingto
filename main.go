@@ -145,6 +145,8 @@ func main() {
 
 func process_basestation_message(message string) {
 
+	//logger.Log("message", message)
+
 	var sbs_message sbsmessage.SBSMessage
 	err := (&sbs_message).FromString(message)
 	if err != nil {
@@ -152,11 +154,12 @@ func process_basestation_message(message string) {
 		return
 	}
 
-	//The flight id
+	// The flight id - if we don't have this we cannot correlate any of the messages.
 	flightid, err := sbs_message.GetFlightId()
 
 	if err != nil {
 		logger.Log("msg", "Failed to find flight id")
+		return
 	}
 
 	flight_seen, _ := flightcache.Get(flightid + "_seen")
@@ -172,39 +175,16 @@ func process_basestation_message(message string) {
 		logger.Log("msg", "Failed to get callsign", "err", err)
 	}
 
-	//@todo - we only need to do this for flights that have gone overhead??!!
-	flight_destination_lat_long, err := flightcache.Get(flightid + "_dest_lat_long")
-	if flight_destination_lat_long == nil {
-		if msg_callsign != "" {
-			flightcache.Set(flightid+"_callsign", []byte(msg_callsign))
-			dest_lat_long := destinations_cache.Cache_get(msg_callsign)
-			if dest_lat_long == "" {
-				dest_lat_long, err = destination_finder.GetDestinationFromCallsign(msg_callsign)
-				if err != nil {
-					logger.Log("msg", "There was an error retrieving the destination from the callsign", "err", err)
-					flightcache.Set(flightid+"_dest_lat_long", []byte("error"))
-				} else {
-					flightcache.Set(flightid+"_dest_lat_long", []byte(dest_lat_long))
-					destinations_cache.Cache_set(msg_callsign, dest_lat_long)
-				}
-			}
-		}
-	} else {
-		//We errored trying to get the lat-long so don't bother again
-		//@todo - tighten up the error handling around this probably.
-		//perhaps we do want to try again, but throttle it, so perhaps
-		//write in the next time that we should try to retrieve the
-		//information?
-		if string(flight_destination_lat_long) == "error" {
-			return
-		}
+	if msg_callsign != "" {
+		flightcache.Set(flightid+"_callsign", []byte(msg_callsign))
 	}
 
 	flight_has_been_overhead, _ := flightcache.Get(flightid + "_has_been_overhead")
 
-	if flight_has_been_overhead != nil {
+	// If the flight hasn't been overhead then check to see if it is now
+	if flight_has_been_overhead == nil {
 
-		visible, err := is_visible_from(sbs_message, 0.0, 0.0)
+		visible, err := is_visible_from(sbs_message, pos_lat, pos_lon)
 
 		if err != nil {
 			logger.Log("msg", "Failed to get whether visible", "err", err)
@@ -221,26 +201,44 @@ func process_basestation_message(message string) {
 				flightcache.Set(flightid+"_alt", []byte(strconv.Itoa(msg_alt)))
 			}
 			flightcache.Set(flightid+"_has_been_overhead", []byte("1"))
+			logger.Log("msg", "Flight deemed to be overhead", "sbs", message)
 		}
 	}
 
 	// Determine whether we have received all the information for this flight, and if so
-	// write it to the db.
+	// attempt to determine the destination and write it to the db.
 	// Might need to mutex this in order to prevent multiple writes?
-	if flight_has_been_overhead != nil {
+	flight_callsign, _ := flightcache.Get(flightid + "_callsign")
+	flight_alt, _ := flightcache.Get(flightid + "_alt")
+
+	// Ensure we have a callsign, an altitude and the flight has actually been overhead before
+	// proceeding any further.
+	if flight_callsign == nil || flight_alt == nil || flight_has_been_overhead == nil {
 		return
 	}
 
-	flight_callsign, _ := flightcache.Get(flightid + "_callsign")
-	flight_alt, _ := flightcache.Get(flightid + "_alt")
-	flight_dest_lat_long, _ := flightcache.Get(flightid + "_dest_lat_long")
+	cached_dest_lat_long, _ := flightcache.Get(flightid + "_dest_lat_long")
+	var dest_lat_long string
+	if cached_dest_lat_long != nil {
+		dest_lat_long = string(cached_dest_lat_long)
+	}
+	if dest_lat_long == "" {
+		dest_lat_long, err = destination_finder.GetDestinationFromCallsign(string(flight_callsign))
+		if err != nil {
+			logger.Log("msg", "There was an error retrieving the destination from the callsign", "callsign", flight_callsign, "err", err)
+			dest_lat_long = "error"
+		} else {
+			destinations_cache.Cache_set(string(flight_callsign), dest_lat_long)
+		}
+		flightcache.Set(flightid+"_dest_lat_long", []byte(dest_lat_long))
+	}
 
-	if flight_dest_lat_long != nil && flight_callsign != nil && flight_alt != nil {
-		_, err := db.Exec("insert into watft(destination_lat_long,callsign,altitude) values(?,?,?)", flight_dest_lat_long, flight_callsign, flight_alt)
+	if dest_lat_long != "" && dest_lat_long != "error" {
+		_, err := db.Exec("insert into watft(destination_lat_long,callsign,altitude) values(?,?,?)", dest_lat_long, flight_callsign, flight_alt)
 		if err != nil {
 			logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
 		} else {
-			logger.Log("msg", string(flight_callsign)+" just flew overhead writing to db")
+			logger.Log("msg", "A flight just passed overhead", "flight", string(flight_callsign), "altitute", flight_alt, "destination", dest_lat_long)
 			flightcache.Set(flightid+"_seen", []byte("seen"))
 		}
 	}
@@ -262,7 +260,7 @@ func is_visible_from(message sbsmessage.SBSMessage, pos_lat float64, pos_lon flo
 	//@todo calculate this based on altitude. the further up the plane is the more visible it's from
 	*/
 
-	var extents float64 = 0.05
+	var extents float64 = 0.02
 
 	if msg_lat > (pos_lat-extents) && msg_lat < (pos_lat+extents) && msg_lon > (pos_lon-extents) && msg_lon < (pos_lon+extents) {
 		return true, nil

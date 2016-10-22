@@ -35,6 +35,10 @@ func (dfc DestinationFinderCache) Open(db *sql.DB) error {
 }
 
 func (dfc DestinationFinderCache) Cache_get(callsign string) string {
+	if dfc.db == nil {
+		return ""
+	}
+
 	var latlong string
 	rows, err := dfc.db.Query("select destination_lat_long from dest_cache where callsign = '" + callsign + "'")
 	if err != nil {
@@ -44,5 +48,8 @@ func (dfc DestinationFinderCache) Cache_get(callsign string) string {
 }
 
 func (dfc DestinationFinderCache) Cache_set(callsign string, latlong string) {
+	if dfc.db == nil {
+		return
+	}
 	dfc.db.Exec("insert into dest_cache(callsign,destination_lat_long) values(?,?)", callsign, latlong)
 }

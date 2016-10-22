@@ -38,7 +38,7 @@ func (message *SBSMessage) FromString(message_string string) (err error) {
 	}
 
 	//Save the flight id
-	message.flight_id = message.fields[5]
+	message.flight_id = message.fields[4]
 
 	return nil
 }
