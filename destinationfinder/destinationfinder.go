@@ -18,10 +18,12 @@ type DestinationFinder interface {
 func GetDestinationFinder() DestinationFinder {
 	findername := os.Getenv("WATFT_FINDER")
 	switch findername {
+	case "planefinder":
+		return PlaneFinderDestinationFinder{}
 	case "holidayextras":
 		return HolidayExtrasDestinationFinder{}
 	default:
-		return HolidayExtrasDestinationFinder{}
+		return PlaneFinderDestinationFinder{}
 	}
 	return nil
 }
