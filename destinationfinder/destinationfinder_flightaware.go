@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -21,7 +22,7 @@ type FlightAwareDestinationFinder struct {
  * data source.
  **/
 func (destination_finder *FlightAwareDestinationFinder) GetDestinationFromCallsign(callsign string) (lat_long string, err error) {
-	flight_url := "http://flightaware.com/live/flight/" + callsign
+	flight_url := "http://" + os.Getenv("WATFT_FA_USERNAME") + ":" + os.Getenv("WATFT_FA_APIKEY") + "@flightxml.flightaware.com/json/FlightXML3/FlightInfoStatus?ident=" + callsign
 
 	resp, err := http.Get(flight_url)
 	if err != nil {
@@ -41,5 +42,5 @@ func (destination_finder *FlightAwareDestinationFinder) GetDestinationFromCallsi
 	tmp_strings := strings.Split(string(flightaware_html), "destinationPoint\":[")
 	lat_long = strings.Split(tmp_strings[1], "]")[0]
 
-	return lat_long, nil
+	return airport_code, airport_name, lat_long, nil
 }

@@ -218,12 +218,16 @@ func process_basestation_message(message string) {
 	}
 
 	cached_dest_lat_long, _ := flightcache.Get(flightid + "_dest_lat_long")
+
 	var dest_lat_long string
+	var airport_name string
+	var airport_code string
+
 	if cached_dest_lat_long != nil {
 		dest_lat_long = string(cached_dest_lat_long)
 	}
 	if dest_lat_long == "" {
-		dest_lat_long, err = destination_finder.GetDestinationFromCallsign(string(flight_callsign))
+		airport_name, airport_code, dest_lat_long, err = destination_finder.GetDestinationFromCallsign(string(flight_callsign))
 		if err != nil {
 			logger.Log("msg", "There was an error retrieving the destination from the callsign", "callsign", flight_callsign, "err", err)
 			dest_lat_long = "error"

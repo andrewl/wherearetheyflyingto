@@ -12,18 +12,14 @@ import (
  * any real processing with this, just using it as an index.
  **/
 type DestinationFinder interface {
-	GetDestinationFromCallsign(callsign string) (lat_long string, err error)
+	GetDestinationFromCallsign(callsign string) (airport_code string, airport_name string, lat_long string, err error)
 }
 
 func GetDestinationFinder() DestinationFinder {
 	findername := os.Getenv("WATFT_FINDER")
 	switch findername {
-	case "planefinder":
-		return PlaneFinderDestinationFinder{}
-	case "holidayextras":
-		return HolidayExtrasDestinationFinder{}
 	default:
-		return PlaneFinderDestinationFinder{}
+		return FlightAwareDestinationFinder{}
 	}
 	return nil
 }
