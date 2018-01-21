@@ -42,8 +42,8 @@ var destination_finder = destinationfinder.GetDestinationFinder()
 func main() {
 
 	// Initialise logging
-	logger = log.NewLogfmtLogger(os.Stderr)
-	logger = log.NewContext(logger).With("ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
+	logger = log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	logger = log.With(logger, "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
 	logger.Log("msg", "Starting wherearetheyflyingto")
 
 	// Open database and create table if necessary
