@@ -1,26 +1,19 @@
 language: go
-
 go:
-  - 1.7
-
+- 1.7
 dist: trusty
-
 env:
-  - PLATFORM=linux-amd64
-  - PLATFORM=linux-arm
-
+- PLATFORM=linux-amd64
+- PLATFORM=linux-arm
 sudo: required
-
 script:
-  - "bash -ex .travis-ci.sh"
-
+- bash -ex .travis-ci.sh
 deploy:
   provider: releases
-  api_key: 
-    secure: "3DE6c9SXIrV91t0FqLPYVr4QiJU+1RcwVPyUuhyuj5+hwdU76JDZ845J/mYK0yYK4jffxIHIwfnO4EpPjT1ZEGo5S+39fL0FsVTuCU3Gr3oigH0Xx7HgRT03UWd3ABu7BaOcmWs++DJqd5+iIfVarWqtAbQG0wZRVyUnIDsGSLJQu9OmXAf/WHsuR/tbZLwf6+5wfVcYntRnbbM5Rxe5P5hwwi4NTW8QroH7jWdpWuo6z/vIvfnX1Vdo6SVrkVDc0XC+ULwN+C2GNYpXR73xGgwE1JbSdEYGy1z9g1Cze7EJmLBeUvfCdSZifc6Q1UA8erq9PPNCsKLHcUuEcg09XAQU4q6Q0JtNBg63Ssb3YOLj8Ed3b87Zf+fiTJnBrlVGxIh1CN74gIWjoHsN0Fr35q2/FPgoEiLZNDuohdpIcKfOjaAcZZJCNzCnAmTkITCYJ0lQAiPVr2bZ8A6EHX3KCll4T95/5Z3dADj1lo0GK9nqHhph7eVbZOuhPu2NV58OmmUXowBk1DCIyDlKPDy15sqnIDM0Fjt2yaJyKUeM7NzFp/olUcvDNxHv0limZ5KV8Lfuq91796sYANULUx+RzQnxKrcl+lEGbS/hvYXXt1Gji95oT2Zl9c12MZzJoo0Do7GWsG0rb3iZxtFRpYAFSX15VG1fHkGaNcvYGv5PUpE="
+  api_key:
+    secure: Y6qjOGGMNLr2Asvyb8tbqsWj4z3c4ypOC5KzkxyyTNH4yuohA+rRvuwMoSabr3QXbXZAKbfChd13FY3ZCE5l0kwq0TBrd805ggfXCkDsRUBE5xiF7ccRIrFhyr8cd9XFAzZAd9wPjoPoqq5I7/tNZNQ7oeM+6jtDOyI4XJ34fuct1DXxCAVVWmbcqXJ/ywKmlOlD36otON19wTdH+wsl4Y2KbNYUqLJvhK4rOShDOTvZe/LxrlOddOoCJjDOF2L9fCmPnDEaWlVD59x0gXUa5GHDqnfLB0l925ef+t5cD0WNEYm0YIS+eJQTFQRZH4eUSQLcUdlB4skvlNYsCmr5J0KROjqzIQWQ6J5AmUaHVgo/RUB82ituVjKBJNPo4Hbhs17H+UNHjZlt6n/W+ocYbcUBhqT1K+Z7kFg02NQ8rdW+cnR+PiZltGBZp+L51oNrqAldRGSHg3HOfNNc1tKPAoaFxPzg14JblaDgI7AXE+/nnjaO0BhkjvWfuythH6noagd5LFwLc/MpUlDNSjndX09A12n5B78Na2rzn5nsjDSA1rP1kyciE88WhYQ/c/sn0hvKR1m7+1//7uZqBfW5qNpoNRiyzHslgo06yQ/VTbEXsmwno0J/wh5oloiUU1Dn0P+a6iG0+qJHAnW5WjK37Lhj8wCPG3o7GV/fOFg3II0=
   file:
     - "wherearetheyflyingto-linux-amd64"
     - "wherearetheyflyingto-linux-arm"
-  skip_cleanup: true
   on:
-    tags: true
+    repo: andrewl/wherearetheyflyingto
