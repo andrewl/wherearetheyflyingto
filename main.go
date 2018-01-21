@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/allegro/bigcache"
+	"github.com/andrewl/wherearetheyflyingto/airport"
 	"github.com/andrewl/wherearetheyflyingto/destinationfinder"
 	"github.com/andrewl/wherearetheyflyingto/sbsmessage"
 	"github.com/go-kit/kit/log"
@@ -58,6 +59,7 @@ func main() {
 	create_table_sql := `
 	    create table watft (
 			  destination_lat_long text,
+			  destination_airport_name text,
 				time datetime default current_timestamp,
 				callsign text,
 				altitude integer );
@@ -217,33 +219,38 @@ func process_basestation_message(message string) {
 		return
 	}
 
-	cached_dest_lat_long, _ := flightcache.Get(flightid + "_dest_lat_long")
+	cached_dest_airport_code, _ := flightcache.Get(flightid + "_dest_airport_code")
 
-	var dest_lat_long string
-	var airport_name string
-	var airport_code string
+	var dest_airport_code string
 
-	if cached_dest_lat_long != nil {
-		dest_lat_long = string(cached_dest_lat_long)
+	if cached_dest_airport_code != nil {
+		dest_airport_code = string(cached_dest_airport_code)
 	}
-	if dest_lat_long == "" {
-		airport_name, airport_code, dest_lat_long, err = destination_finder.GetDestinationFromCallsign(string(flight_callsign))
+	if dest_airport_code == "" {
+		dest_airport_code, err = destination_finder.GetDestinationFromCallsign(string(flight_callsign))
+		logger.Log("msg", "Got ", dest_airport_code)
 		if err != nil {
 			logger.Log("msg", "There was an error retrieving the destination from the callsign", "callsign", flight_callsign, "err", err)
-			dest_lat_long = "error"
+			dest_airport_code = "error"
 		} else {
-			destinations_cache.Cache_set(string(flight_callsign), dest_lat_long)
+			destinations_cache.Cache_set(string(flight_callsign), dest_airport_code)
 		}
-		flightcache.Set(flightid+"_dest_lat_long", []byte(dest_lat_long))
+		flightcache.Set(flightid+"_dest_lat_long", []byte(dest_airport_code))
 	}
 
-	if dest_lat_long != "" && dest_lat_long != "error" {
-		_, err := db.Exec("insert into watft(destination_lat_long,callsign,altitude) values(?,?,?)", dest_lat_long, flight_callsign, flight_alt)
+	if dest_airport_code != "" && dest_airport_code != "error" {
+		dest_airport, err := airport.GetAirportFromCode(dest_airport_code)
 		if err != nil {
-			logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
+			logger.Log("msg", "Failed to get airport from airport code "+dest_airport_code)
 		} else {
-			logger.Log("msg", "A flight just passed overhead", "flight", string(flight_callsign), "altitute", flight_alt, "destination", dest_lat_long)
-			flightcache.Set(flightid+"_seen", []byte("seen"))
+			dest_lat_long := fmt.Sprintf("%.4f,%.4f", dest_airport.lat, dest_airport.lon)
+			_, err := db.Exec("insert into watft(destination_lat_long,destination_airport_name,callsign,altitude) values(?,?,?)", dest_lat_long, dest_airport.name, flight_callsign, flight_alt)
+			if err != nil {
+				logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
+			} else {
+				logger.Log("msg", "A flight just passed overhead", "flight", string(flight_callsign), "altitute", flight_alt, "destination", dest_lat_long)
+				flightcache.Set(flightid+"_seen", []byte("seen"))
+			}
 		}
 	}
 }

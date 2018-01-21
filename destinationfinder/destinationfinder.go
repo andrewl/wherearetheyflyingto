@@ -12,7 +12,7 @@ import (
  * any real processing with this, just using it as an index.
  **/
 type DestinationFinder interface {
-	GetDestinationFromCallsign(callsign string) (airport_code string, airport_name string, lat_long string, err error)
+	GetDestinationFromCallsign(callsign string) (airport_code string, err error)
 }
 
 func GetDestinationFinder() DestinationFinder {
