@@ -3,6 +3,8 @@ language: go
 go:
   - 1.5
 
+group: deprecated-2017Q4
+
 env:
   - PLATFORM=linux-amd64
   - PLATFORM=linux-arm

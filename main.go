@@ -50,7 +50,7 @@ func main() {
 	var err error
 	db, err = sql.Open("sqlite3", "wherearetheyflyingto.db")
 	if err != nil {
-		logger.Log("msg", "Failed to open database")
+		logger.Log("msg", "Failed to create database", "err", err)
 		return
 	}
 	defer db.Close()
@@ -67,7 +67,7 @@ func main() {
 
 	_, err = db.Exec(create_table_sql)
 	if err != nil {
-		logger.Log("msg", "create table failed. This probably isn't a problem if the table already exists.", "err", err)
+		logger.Log("msg", "Failed to create table. This probably isn't a problem if the table already exists", "err", err)
 	}
 
 	var write_heatmap = flag.Bool("heatmap", false, "just write out the heatmap and exit")
@@ -243,8 +243,8 @@ func process_basestation_message(message string) {
 		if err != nil {
 			logger.Log("msg", "Failed to get airport from airport code "+dest_airport_code)
 		} else {
-			dest_lat_long := fmt.Sprintf("%.4f,%.4f", dest_airport.lat, dest_airport.lon)
-			_, err := db.Exec("insert into watft(destination_lat_long,destination_airport_name,callsign,altitude) values(?,?,?)", dest_lat_long, dest_airport.name, flight_callsign, flight_alt)
+			dest_lat_long := fmt.Sprintf("%.4f,%.4f", dest_airport.Lat, dest_airport.Lon)
+			_, err := db.Exec("insert into watft(destination_lat_long,destination_airport_name,callsign,altitude) values(?,?,?)", dest_lat_long, dest_airport.Name, flight_callsign, flight_alt)
 			if err != nil {
 				logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
 			} else {

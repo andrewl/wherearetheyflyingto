@@ -11,10 +11,10 @@ import (
 )
 
 type AirportStruct struct {
-	code string
-	name string
-	lat  string
-	lon  string
+	Code string
+	Name string
+	Lat  string
+	Lon  string
 }
 
 func GetAirportFromCode(airport_code string) (airport AirportStruct, err error) {
@@ -33,10 +33,10 @@ func GetAirportFromCode(airport_code string) (airport AirportStruct, err error) 
 
 	for _, v := range records {
 		if v[5] == airport_code {
-			airport.code = v[5]
-			airport.name = v[1] + ", " + v[3]
-			airport.lat = v[7]
-			airport.lon = v[6]
+			airport.Code = v[5]
+			airport.Name = v[1] + ", " + v[3]
+			airport.Lat = v[7]
+			airport.Lon = v[6]
 			return airport, nil
 		}
 	}
