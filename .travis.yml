@@ -15,5 +15,7 @@ deploy:
   file:
     - "wherearetheyflyingto-linux-amd64"
     - "wherearetheyflyingto-linux-arm"
+  skip_cleanup: true
   on:
-    repo: andrewl/wherearetheyflyingto
+    tags: true
+
