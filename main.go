@@ -6,17 +6,16 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"net"
-	"os"
-	"strconv"
-	"time"
-
 	"github.com/allegro/bigcache"
 	"github.com/andrewl/wherearetheyflyingto/airport"
 	"github.com/andrewl/wherearetheyflyingto/destinationfinder"
 	"github.com/andrewl/wherearetheyflyingto/sbsmessage"
 	"github.com/go-kit/kit/log"
 	_ "github.com/mattn/go-sqlite3"
+	"net"
+	"os"
+	"strconv"
+	"time"
 )
 
 // Logger for logging
@@ -228,9 +227,9 @@ func process_basestation_message(message string) {
 	}
 	if dest_airport_code == "" {
 		dest_airport_code, err = destination_finder.GetDestinationFromCallsign(string(flight_callsign))
-		logger.Log("msg", "Got ", dest_airport_code)
+		logger.Log("msg", fmt.Sprintf("Got '%s' from callsign '%s'", dest_airport_code, flight_callsign))
 		if err != nil {
-			logger.Log("msg", "There was an error retrieving the destination from the callsign", "callsign", flight_callsign, "err", err)
+			logger.Log("msg", fmt.Sprintf("There was an error retrieving the destination from the callsign %s", flight_callsign), "err", err)
 			dest_airport_code = "error"
 		} else {
 			destinations_cache.Cache_set(string(flight_callsign), dest_airport_code)

@@ -32,6 +32,7 @@ func (destination_finder FlightAwareDestinationFinder) GetDestinationFromCallsig
 	defer resp.Body.Close()
 
 	flightaware_json, err := ioutil.ReadAll(resp.Body)
+
 	if err != nil {
 		return "", errors.New("Failed to retrieve flight details from " + flight_url)
 	}
