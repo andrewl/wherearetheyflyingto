@@ -242,7 +242,7 @@ func process_basestation_message(message string) {
 		if err != nil {
 			logger.Log("msg", "Failed to get airport from airport code "+dest_airport_code)
 		} else {
-			dest_lat_long := fmt.Sprintf("%.4f,%.4f", dest_airport.Lat, dest_airport.Lon)
+			dest_lat_long := fmt.Sprintf("%s,%s", dest_airport.Lat, dest_airport.Lon)
 			_, err := db.Exec("insert into watft(destination_lat_long,destination_airport_name,callsign,altitude) values(?,?,?)", dest_lat_long, dest_airport.Name, flight_callsign, flight_alt)
 			if err != nil {
 				logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
