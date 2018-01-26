@@ -8,8 +8,8 @@ import (
 )
 
 /**
- * Retrieves the lat long of the destination (as a simple string, we're not interested in doing
- * any real processing with this, just using it as an index.
+ * Retrieves the airport code of the destination
+ * (as a simple string, we're not interested in doing
  **/
 type DestinationFinder interface {
 	GetDestinationFromCallsign(callsign string) (airport_code string, err error)
