@@ -9,8 +9,9 @@ func TestAirport(t *testing.T) {
 		fmt.Println("ExtractDestinationFromJSON errored with")
 		fmt.Println(err)
 		t.Fail()
-	} else if airport.code != "EGGW" {
-		fmt.Println("Failed to extract correct airport code: " + airport.code)
+	} else if airport.Code != "EGGW" {
+		fmt.Printf("%v", airport)
+		fmt.Println("Failed to extract correct airport code: " + airport.Code)
 		t.Fail()
 	}
 }

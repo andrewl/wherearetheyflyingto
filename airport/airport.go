@@ -6,7 +6,6 @@ package airport
 import (
 	"encoding/csv"
 	"errors"
-	"log"
 	"os"
 )
 
@@ -20,6 +19,11 @@ type AirportStruct struct {
 func GetAirportFromCode(airport_code string) (airport AirportStruct, err error) {
 
 	file, err := os.Open("./airports.dat")
+
+	if err != nil {
+		return airport, err
+	}
+
 	defer file.Close()
 
 	reader := csv.NewReader(file)
@@ -27,7 +31,6 @@ func GetAirportFromCode(airport_code string) (airport AirportStruct, err error) 
 
 	records, err := reader.ReadAll()
 	if err != nil {
-		log.Fatal(err)
 		return airport, err
 	}
 

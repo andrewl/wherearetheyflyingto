@@ -27,8 +27,6 @@ var flightcache *bigcache.BigCache
 // sqlite3 db connection
 var db *sql.DB
 
-var destinations_cache destinationfinder.DestinationFinderCache
-
 // lat long bounds of flights that we're interested in recording. A well setup aerial can pick up
 // ads-b messages from hundreds of KMs away, but we want the ones just flying overhead.
 var pos_lat float64
@@ -45,17 +43,19 @@ func main() {
 	logger = log.With(logger, "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
 	logger.Log("msg", "Starting wherearetheyflyingto")
 
-	// Open database and create table if necessary
 	var err error
-	db, err = sql.Open("sqlite3", "wherearetheyflyingto.db")
-	if err != nil {
-		logger.Log("msg", "Failed to create database", "err", err)
-		return
-	}
-	defer db.Close()
+	db = nil
+	if os.Getenv("WATFT_DB") != "" {
+		// Open database and create table if necessary
+		db, err = sql.Open("sqlite3", "wherearetheyflyingto.db")
+		if err != nil {
+			logger.Log("msg", "Failed to create database", "err", err)
+			return
+		}
+		defer db.Close()
 
-	//@todo check if the table exists first? Perhaps doesn't matter?
-	create_table_sql := `
+		//@todo check if the table exists first? Perhaps doesn't matter?
+		create_table_sql := `
 	    create table watft (
 			  destination_lat_long text,
 			  destination_airport_name text,
@@ -64,62 +64,18 @@ func main() {
 				altitude integer );
 			`
 
-	_, err = db.Exec(create_table_sql)
-	if err != nil {
-		logger.Log("msg", "Failed to create table. This probably isn't a problem if the table already exists", "err", err)
+		_, err = db.Exec(create_table_sql)
+		if err != nil {
+			logger.Log("msg", "Failed to create table. This probably isn't a problem if the table already exists", "err", err)
+		}
 	}
 
-	var write_heatmap = flag.Bool("heatmap", false, "just write out the heatmap and exit")
 	flag.Parse()
-
-	if *write_heatmap {
-		heatmap_json := "["
-		first := true
-		for max_alt := 9000; max_alt < 45000; max_alt += 9000 {
-			min_alt := max_alt - 9000
-			rows, err := db.Query("select destination_lat_long, count(*) from watft where abs(altitude) > " + strconv.Itoa(min_alt) + " and abs(altitude) <= " + strconv.Itoa(max_alt) + " group by destination_lat_long")
-			if err != nil {
-				logger.Log("msg", "Failed to query database to create heatmap", "err", err)
-				return
-			}
-
-			for rows.Next() {
-				var destination_lat_long string
-				var count string
-				_ = rows.Scan(&destination_lat_long, &count)
-				if first == false {
-					heatmap_json = heatmap_json + ",\n"
-				}
-				heatmap_json = heatmap_json + "[" + destination_lat_long + "," + count + "," + strconv.Itoa(max_alt) + "]"
-				first = false
-			}
-		}
-		heatmap_json = heatmap_json + "]"
-
-		file, err := os.Create("./watft_destinations.json")
-		if err != nil {
-			logger.Log("msg", "Failed to write watft_destinations.js", "err", err)
-			return
-		}
-		defer file.Close()
-
-		_, err = file.WriteString(heatmap_json)
-
-		if err != nil {
-			logger.Log("msg", "Failed to write to watf_destinations.js", "err", err)
-			return
-		}
-
-		return
-	}
-
-	//open our cache
-	destinations_cache.Open(db)
 
 	pos_lat, _ = strconv.ParseFloat(os.Getenv("WATFT_LAT"), 64)
 	pos_lon, _ = strconv.ParseFloat(os.Getenv("WATFT_LON"), 64)
 
-	logger.Log("msg", "point set", "point", fmt.Sprintf("%v,%v", pos_lat, pos_lon))
+	logger.Log("msg", "current location set", "point", fmt.Sprintf("%v,%v", pos_lat, pos_lon))
 
 	// Initialise our in-memory cache
 	flightcache, _ = bigcache.NewBigCache(bigcache.DefaultConfig(10 * time.Minute))
@@ -231,8 +187,6 @@ func process_basestation_message(message string) {
 		if err != nil {
 			logger.Log("msg", fmt.Sprintf("There was an error retrieving the destination from the callsign %s", flight_callsign), "err", err)
 			dest_airport_code = "error"
-		} else {
-			destinations_cache.Cache_set(string(flight_callsign), dest_airport_code)
 		}
 		flightcache.Set(flightid+"_dest_lat_long", []byte(dest_airport_code))
 	}
@@ -243,13 +197,14 @@ func process_basestation_message(message string) {
 			logger.Log("msg", "Failed to get airport from airport code "+dest_airport_code)
 		} else {
 			dest_lat_long := fmt.Sprintf("%s,%s", dest_airport.Lat, dest_airport.Lon)
-			_, err := db.Exec("insert into watft(destination_lat_long,destination_airport_name,callsign,altitude) values(?,?,?)", dest_lat_long, dest_airport.Name, flight_callsign, flight_alt)
-			if err != nil {
-				logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
-			} else {
-				logger.Log("msg", "A flight just passed overhead", "flight", string(flight_callsign), "altitute", flight_alt, "destination", dest_lat_long)
-				flightcache.Set(flightid+"_seen", []byte("seen"))
+			if db != nil {
+				_, err := db.Exec("insert into watft(destination_lat_long,destination_airport_name,callsign,altitude) values(?,?,?)", dest_lat_long, dest_airport.Name, flight_callsign, flight_alt)
+				if err != nil {
+					logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
+				}
 			}
+			logger.Log("msg", "A flight just passed overhead", "flight", string(flight_callsign), "altitute", flight_alt, "destination", dest_lat_long)
+			flightcache.Set(flightid+"_seen", []byte("seen"))
 		}
 	}
 }

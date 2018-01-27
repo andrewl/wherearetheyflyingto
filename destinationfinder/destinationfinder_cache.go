@@ -41,7 +41,7 @@ func (dfc DestinationFinderCache) Cache_get(callsign string) string {
 
 	var latlong string
 	rows, err := dfc.db.Query("select destination_lat_long from dest_cache where callsign = '" + callsign + "'")
-	if err != nil {
+	if err == nil {
 		_ = rows.Scan(&latlong)
 	}
 	return latlong
