@@ -6,6 +6,7 @@ package destinationfinder
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -41,6 +42,11 @@ func (destination_finder FlightAwareDestinationFinder) GetDestinationFromCallsig
 }
 
 func (destination_finder *FlightAwareDestinationFinder) ExtractDestinationFromJson(json_string []byte) (airport_code string, err error) {
+
+	var js json.RawMessage
+	if json.Unmarshal(json_string, &js) != nil {
+		return "", errors.New(fmt.Sprintf("Invalid JSON: %s", string(json_string)))
+	}
 
 	type FlightAwareResult struct {
 		FlightInfoStatusResult struct {
@@ -125,6 +131,8 @@ func (destination_finder *FlightAwareDestinationFinder) ExtractDestinationFromJs
 
 	if err == nil {
 		airport_code = flightAwareResult.FlightInfoStatusResult.Flights[0].Destination.Code
+	} else {
+		err = errors.New(fmt.Sprintf("Error: %v.\nJSON Payload: %s", err, string(json_string)))
 	}
 
 	return airport_code, err

@@ -181,6 +181,7 @@ func process_basestation_message(message string) {
 	if cached_dest_airport_code != nil {
 		dest_airport_code = string(cached_dest_airport_code)
 	}
+
 	if dest_airport_code == "" {
 		dest_airport_code, err = destination_finder.GetDestinationFromCallsign(string(flight_callsign))
 		logger.Log("msg", fmt.Sprintf("Got '%s' from callsign '%s'", dest_airport_code, flight_callsign))
@@ -203,10 +204,16 @@ func process_basestation_message(message string) {
 					logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
 				}
 			}
-			logger.Log("msg", "A flight just passed overhead", "flight", string(flight_callsign), "altitute", flight_alt, "destination", dest_lat_long)
+			logger.Log("msg", "A flight just passed overhead", "flight", string(flight_callsign), "altitute", flight_alt, "destination", dest_lat_long, "destination_name", dest_airport.Name)
 			flightcache.Set(flightid+"_seen", []byte("seen"))
 		}
 	}
+
+	if dest_airport_code == "error" {
+		//There's probably not any more that we can do, so mark this as seen.
+		flightcache.Set(flightid+"_seen", []byte("seen"))
+	}
+
 }
 
 func is_visible_from(message sbsmessage.SBSMessage, pos_lat float64, pos_lon float64) (visibility bool, err error) {
