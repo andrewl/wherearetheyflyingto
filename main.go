@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -11,7 +10,6 @@ import (
 	"github.com/andrewl/wherearetheyflyingto/destinationfinder"
 	"github.com/andrewl/wherearetheyflyingto/sbsmessage"
 	"github.com/go-kit/kit/log"
-	_ "github.com/mattn/go-sqlite3"
 	"net"
 	"os"
 	"strconv"
@@ -23,9 +21,6 @@ var logger log.Logger
 
 // For cacheing the flights we've seen recently in order to combine multiple messages for a single flight
 var flightcache *bigcache.BigCache
-
-// sqlite3 db connection
-var db *sql.DB
 
 // lat long bounds of flights that we're interested in recording. A well setup aerial can pick up
 // ads-b messages from hundreds of KMs away, but we want the ones just flying overhead.
@@ -44,31 +39,6 @@ func main() {
 	logger.Log("msg", "Starting wherearetheyflyingto")
 
 	var err error
-	db = nil
-	if os.Getenv("WATFT_DB") != "" {
-		// Open database and create table if necessary
-		db, err = sql.Open("sqlite3", "wherearetheyflyingto.db")
-		if err != nil {
-			logger.Log("msg", "Failed to create database", "err", err)
-			return
-		}
-		defer db.Close()
-
-		//@todo check if the table exists first? Perhaps doesn't matter?
-		create_table_sql := `
-	    create table watft (
-			  destination_lat_long text,
-			  destination_airport_name text,
-				time datetime default current_timestamp,
-				callsign text,
-				altitude integer );
-			`
-
-		_, err = db.Exec(create_table_sql)
-		if err != nil {
-			logger.Log("msg", "Failed to create table. This probably isn't a problem if the table already exists", "err", err)
-		}
-	}
 
 	flag.Parse()
 
@@ -163,7 +133,7 @@ func process_basestation_message(message string) {
 	}
 
 	// Determine whether we have received all the information for this flight, and if so
-	// attempt to determine the destination and write it to the db.
+	// attempt to determine the destination and write it to the stdout
 	// Might need to mutex this in order to prevent multiple writes?
 	flight_callsign, _ := flightcache.Get(flightid + "_callsign")
 	flight_alt, _ := flightcache.Get(flightid + "_alt")
@@ -198,12 +168,6 @@ func process_basestation_message(message string) {
 			logger.Log("msg", "Failed to get airport from airport code "+dest_airport_code)
 		} else {
 			dest_lat_long := fmt.Sprintf("%s,%s", dest_airport.Lat, dest_airport.Lon)
-			if db != nil {
-				_, err := db.Exec("insert into watft(destination_lat_long,destination_airport_name,callsign,altitude) values(?,?,?)", dest_lat_long, dest_airport.Name, flight_callsign, flight_alt)
-				if err != nil {
-					logger.Log("msg", string(flight_callsign)+" just flew overhead, but failed to write into db", "err", err)
-				}
-			}
 			logger.Log("msg", "A flight just passed overhead", "flight", string(flight_callsign), "altitute", flight_alt, "destination", dest_lat_long, "destination_name", dest_airport.Name)
 			flightcache.Set(flightid+"_seen", []byte("seen"))
 		}
