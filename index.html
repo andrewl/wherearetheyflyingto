@@ -185,8 +185,8 @@
       $(waft_destinations).each(function(idx, item) {
         if (item[3] > min_alt && item[3] <= max_alt) {
           destinationData.data.push({
-            lat: item[0],
-            lng: item[1],
+            lat: item[1],
+            lng: item[0],
             count: item[2],
             altitude: item[3]
           });
