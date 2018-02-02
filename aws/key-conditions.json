@@ -1,0 +1,10 @@
+{
+  "msg": {
+    "AttributeValueList": [
+      {   
+        "S": "A flight just passed overhead"
+      }   
+    ],  
+    "ComparisonOperator": "EQ"
+  }
+}

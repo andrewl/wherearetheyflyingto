@@ -130,7 +130,11 @@ func (destination_finder *FlightAwareDestinationFinder) ExtractDestinationFromJs
 	err = json.Unmarshal(json_string, &flightAwareResult)
 
 	if err == nil {
-		airport_code = flightAwareResult.FlightInfoStatusResult.Flights[0].Destination.Code
+		if len(flightAwareResult.FlightInfoStatusResult.Flights) > 0 {
+			airport_code = flightAwareResult.FlightInfoStatusResult.Flights[0].Destination.Code
+		} else {
+			err = errors.New(fmt.Sprintf("Error no flights in payload:\nJSON Payload: %s", err, string(json_string)))
+		}
 	} else {
 		err = errors.New(fmt.Sprintf("Error: %v.\nJSON Payload: %s", err, string(json_string)))
 	}
