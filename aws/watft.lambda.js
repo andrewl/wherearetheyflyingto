@@ -1,6 +1,12 @@
 /* eslint-disable  func-names */
 /* eslint quote-props: ["error", "consistent"]*/
 
+/*
+ * This is a lambda to be used for an Alexa voice skill to return the
+ * details of the last plane that flew over
+ */
+
+
 'use strict';
 
 const Alexa = require('alexa-sdk');
