@@ -164,13 +164,15 @@ func process_basestation_message(message string) {
 
 	if dest_airport_code != "" && dest_airport_code != "error" {
 		dest_airport, err := airport.GetAirportFromCode(dest_airport_code)
+		// If we couldn't resolve the airport code to an airport name then just use the airport code as the destination.
 		if err != nil {
 			logger.Log("msg", "Failed to get airport from airport code "+dest_airport_code)
-		} else {
-			dest_lat_long := fmt.Sprintf("%s,%s", dest_airport.Lat, dest_airport.Lon)
-			logger.Log("msg", "A flight just passed overhead", "flight", string(flight_callsign), "altitute", flight_alt, "destination", dest_lat_long, "destination_name", dest_airport.Name)
-			flightcache.Set(flightid+"_seen", []byte("seen"))
+			dest_airport.Name = "airport with code " + dest_airport_code
 		}
+
+		dest_lat_long := fmt.Sprintf("%s,%s", dest_airport.Lat, dest_airport.Lon)
+		logger.Log("msg", "A flight just passed overhead", "flight", string(flight_callsign), "altitute", flight_alt, "destination", dest_lat_long, "destination_name", dest_airport.Name)
+		flightcache.Set(flightid+"_seen", []byte("seen"))
 	}
 
 	if dest_airport_code == "error" {
