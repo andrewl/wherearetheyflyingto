@@ -1,0 +1,10 @@
+{
+  "destination": {
+    "AttributeValueList": [
+      {   
+        "S": ","
+      }   
+    ],  
+    "ComparisonOperator": "NE"
+  }
+}
