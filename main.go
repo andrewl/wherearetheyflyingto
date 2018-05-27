@@ -156,7 +156,10 @@ func process_basestation_message(message string) {
 		dest_airport_code, err = destination_finder.GetDestinationFromCallsign(string(flight_callsign))
 		logger.Log("msg", fmt.Sprintf("Got '%s' from callsign '%s'", dest_airport_code, flight_callsign))
 		if err != nil {
-			logger.Log("msg", fmt.Sprintf("There was an error retrieving the destination from the callsign %s", flight_callsign), "err", err)
+			logger.Log(
+				"msg", "There was an error retrieving the destination from the callsign",
+				"callsign", flight_callsign,
+				"err", err)
 			dest_airport_code = "error"
 		}
 		flightcache.Set(flightid+"_dest_lat_long", []byte(dest_airport_code))
